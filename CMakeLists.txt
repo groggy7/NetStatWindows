@@ -10,6 +10,7 @@ project(
 option(NETSTAT_BUILD_TESTS "Build the portable unit tests" ON)
 
 add_library(netstat_core STATIC
+    src/core/InterfacePolicy.cpp
     src/core/RateCalculator.cpp
     src/core/RateFormatter.cpp
     src/core/Settings.cpp

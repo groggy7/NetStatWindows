@@ -9,3 +9,18 @@ else()
 endif()
 
 add_test(NAME netstat_core_tests COMMAND netstat_core_tests)
+
+if(WIN32)
+    add_executable(netstat_windows_platform_tests WindowsPlatformTests.cpp)
+    target_link_libraries(
+        netstat_windows_platform_tests PRIVATE netstat_windows_platform
+    )
+    target_compile_features(netstat_windows_platform_tests PRIVATE cxx_std_20)
+    target_compile_options(netstat_windows_platform_tests PRIVATE
+        /W4 /WX /permissive- /EHsc /utf-8
+    )
+    add_test(
+        NAME netstat_windows_platform_tests
+        COMMAND netstat_windows_platform_tests
+    )
+endif()

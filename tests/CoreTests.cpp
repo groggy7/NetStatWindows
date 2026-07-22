@@ -1,3 +1,4 @@
+#include "core/InterfacePolicy.h"
 #include "core/RateCalculator.h"
 #include "core/RateFormatter.h"
 #include "core/Settings.h"
@@ -198,12 +199,79 @@ void TestSettingsValidation() {
         "invalid enum defaults");
 }
 
+void TestInterfacePolicy() {
+    using netstat::InterfaceMetadata;
+    using netstat::InterfaceMode;
+    using netstat::InterfacePolicy;
+    using netstat::NetworkInterfaceType;
+
+    const InterfaceMetadata ethernet{
+        .type = NetworkInterfaceType::Ethernet,
+        .isOperational = true,
+        .isHardware = true,
+        .hasConnector = true};
+    Expect(
+        InterfacePolicy::ShouldInclude(ethernet, InterfaceMode::Physical),
+        "physical Ethernet is included");
+
+    const InterfaceMetadata wifi{
+        .type = NetworkInterfaceType::Wifi,
+        .isOperational = true,
+        .isHardware = true,
+        .hasConnector = false};
+    Expect(
+        InterfacePolicy::ShouldInclude(wifi, InterfaceMode::Physical),
+        "physical Wi-Fi is included");
+
+    const InterfaceMetadata virtualEthernet{
+        .type = NetworkInterfaceType::Ethernet,
+        .isOperational = true,
+        .isHardware = false,
+        .hasConnector = false};
+    Expect(
+        !InterfacePolicy::ShouldInclude(
+            virtualEthernet, InterfaceMode::Physical),
+        "virtual Ethernet is excluded from physical mode");
+    Expect(
+        InterfacePolicy::ShouldInclude(
+            virtualEthernet, InterfaceMode::AllActive),
+        "virtual Ethernet is included in all-active mode");
+
+    const InterfaceMetadata tunnel{
+        .type = NetworkInterfaceType::Tunnel,
+        .isOperational = true,
+        .isHardware = false,
+        .hasConnector = false};
+    Expect(
+        !InterfacePolicy::ShouldInclude(tunnel, InterfaceMode::Physical),
+        "tunnel is excluded from physical mode");
+    Expect(
+        InterfacePolicy::ShouldInclude(tunnel, InterfaceMode::AllActive),
+        "tunnel is included in all-active mode");
+
+    const InterfaceMetadata loopback{
+        .type = NetworkInterfaceType::Loopback,
+        .isOperational = true,
+        .isHardware = false,
+        .hasConnector = false};
+    Expect(
+        !InterfacePolicy::ShouldInclude(loopback, InterfaceMode::AllActive),
+        "loopback is always excluded");
+
+    auto disconnected = ethernet;
+    disconnected.isOperational = false;
+    Expect(
+        !InterfacePolicy::ShouldInclude(disconnected, InterfaceMode::Physical),
+        "disconnected interface is excluded");
+}
+
 }  // namespace
 
 int main() {
     TestRateCalculator();
     TestRateFormatter();
     TestSettingsValidation();
+    TestInterfacePolicy();
 
     if (failures != 0) {
         std::cerr << failures << " test(s) failed\n";
