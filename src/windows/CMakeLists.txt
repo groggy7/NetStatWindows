@@ -1,6 +1,7 @@
 add_library(netstat_windows_platform STATIC
     platform/MonotonicClock.cpp
     platform/RegistrySettingsStore.cpp
+    platform/StartupManager.cpp
     platform/TaskbarGapFinder.cpp
     platform/TaskbarLocator.cpp
     platform/ThemeMonitor.cpp
@@ -40,6 +41,7 @@ add_executable(NetStatBar WIN32
     app/SamplingWorker.cpp
     app/SingleInstance.cpp
     ui/ReadoutWindow.cpp
+    ui/SettingsWindow.cpp
     ui/TrayIcon.cpp
 )
 

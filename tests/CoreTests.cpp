@@ -175,7 +175,7 @@ void TestSettingsValidation() {
     Expect(
         settings.displayLayout == netstat::DisplayLayout::Stacked,
         "stacked layout is the default");
-    Expect(settings.startAtSignIn, "start at sign-in defaults on");
+    Expect(!settings.startAtSignIn, "start at sign-in requires opt-in");
 
     settings.updateIntervalSeconds = 3.0;
     settings.customWidthDips = 300.0;

@@ -29,6 +29,7 @@ namespace {
 App::App(const HINSTANCE instance)
     : instance_(instance),
       readoutWindow_(instance),
+      settingsWindow_(instance),
       samplingWorker_([this](const NetworkRate rate) { PublishRate(rate); }) {}
 
 App::~App() {
@@ -50,6 +51,9 @@ int App::Run(const int showCommand) {
         }
         if (result == -1) {
             return 1;
+        }
+        if (settingsWindow_.HandleDialogMessage(&message)) {
+            continue;
         }
         ::TranslateMessage(&message);
         ::DispatchMessageW(&message);
@@ -85,6 +89,10 @@ bool App::CreateControllerWindow() {
 
 bool App::Initialize() {
     settings_ = settingsStore_.Load();
+    if (!startupManager_.SetEnabled(settings_.startAtSignIn)) {
+        settings_.startAtSignIn = false;
+        static_cast<void>(settingsStore_.Save(settings_));
+    }
     taskbarCreatedMessage_ = ::RegisterWindowMessageW(L"TaskbarCreated");
     if (!trayIcon_.Add(window_, kTrayCallbackMessage)) {
         return false;
@@ -232,11 +240,7 @@ void App::HandleCommand(const TrayCommand command) {
             settings_.placementMode = PlacementMode::TrayOnly;
             break;
         case TrayCommand::Reposition:
-            ::MessageBoxW(
-                nullptr,
-                L"Readout repositioning will be available with the taskbar readout.",
-                L"NetStatBar",
-                MB_OK | MB_ICONINFORMATION);
+            BeginReadoutReposition();
             return;
         case TrayCommand::Settings:
             ShowSettings();
@@ -251,10 +255,14 @@ void App::HandleCommand(const TrayCommand command) {
             return;
     }
     SaveAndRefresh(reconfigureSampler);
+    settingsWindow_.Sync(settings_);
 }
 
 void App::SaveAndRefresh(const bool reconfigureSampler) {
     settings_.Validate();
+    if (!startupManager_.SetEnabled(settings_.startAtSignIn)) {
+        settings_.startAtSignIn = false;
+    }
     static_cast<void>(settingsStore_.Save(settings_));
     if (reconfigureSampler && !paused_) {
         samplingWorker_.Reconfigure(
@@ -267,12 +275,62 @@ void App::SaveAndRefresh(const bool reconfigureSampler) {
 }
 
 void App::ShowSettings() {
+    settingsWindow_.Show(
+        nullptr,
+        settings_,
+        [this](const Settings& settings) {
+            ApplySettingsFromWindow(settings);
+        },
+        [this] { BeginReadoutReposition(); });
+}
+
+void App::ApplySettingsFromWindow(const Settings& settings) {
+    const bool reconfigureSampler =
+        settings.interfaceMode != settings_.interfaceMode ||
+        settings.updateIntervalSeconds != settings_.updateIntervalSeconds;
+    settings_ = settings;
+    SaveAndRefresh(reconfigureSampler);
+}
+
+void App::BeginReadoutReposition() {
+    if (!readoutAvailable_ ||
+        settings_.placementMode == PlacementMode::TrayOnly) {
+        ::MessageBoxW(
+            nullptr,
+            L"Enable a visible readout before repositioning it.",
+            L"NetStatBar",
+            MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
     ::MessageBoxW(
         nullptr,
-        L"Use the notification-area menu for settings while the full native "
-        L"settings window is being initialized.",
-        L"NetStatBar Settings",
+        L"Drag the outlined readout along the taskbar and release to save. "
+        L"You can also use the arrow keys and press Enter. Press Escape or "
+        L"right-click to cancel.",
+        L"Reposition NetStatBar",
         MB_OK | MB_ICONINFORMATION);
+    const bool started = readoutWindow_.BeginReposition(
+        [this](const std::optional<double> offset) {
+            if (!offset.has_value()) {
+                return;
+            }
+            if (settingsWindow_.IsOpen()) {
+                settingsWindow_.ApplyReposition(*offset);
+            } else {
+                settings_.placementMode = PlacementMode::OnTaskbar;
+                settings_.normalizedOffset = *offset;
+                SaveAndRefresh(false);
+            }
+        });
+    if (!started) {
+        ::MessageBoxW(
+            nullptr,
+            L"The readout is not currently available. Show the taskbar and try "
+            L"again.",
+            L"NetStatBar",
+            MB_OK | MB_ICONWARNING);
+    }
 }
 
 LRESULT CALLBACK App::WindowProcedure(

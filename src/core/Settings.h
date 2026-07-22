@@ -52,7 +52,7 @@ struct Settings {
     double customWidthDips{};
     double fontSizeDips{11.0};
     double normalizedOffset{0.5};
-    bool startAtSignIn{true};
+    bool startAtSignIn{};
 
     void Validate() noexcept;
     [[nodiscard]] static Settings Defaults() noexcept;

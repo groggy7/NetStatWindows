@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 namespace netstat::windows {
 namespace {
@@ -176,6 +177,41 @@ void ReadoutWindow::Hide() noexcept {
     }
 }
 
+bool ReadoutWindow::BeginReposition(
+    std::function<void(std::optional<double>)> completion) {
+    if (window_ == nullptr || !shouldShow_ || !lastTaskbar_.has_value() ||
+        repositioning_) {
+        return false;
+    }
+
+    repositioning_ = true;
+    originalBounds_ = windowBounds_;
+    originalAdjacent_ = adjacent_;
+    repositionCompletion_ = std::move(completion);
+    adjacent_ = false;
+    windowBounds_ = TaskbarGapFinder::PlaceAtOffset(
+        *lastTaskbar_,
+        surfaceWidth_,
+        surfaceHeight_,
+        settings_.normalizedOffset);
+
+    LONG_PTR extendedStyle = ::GetWindowLongPtrW(window_, GWL_EXSTYLE);
+    extendedStyle &= ~(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+    ::SetWindowLongPtrW(window_, GWL_EXSTYLE, extendedStyle);
+    ::SetWindowPos(
+        window_,
+        HWND_TOPMOST,
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    ::SetForegroundWindow(window_);
+    ::SetFocus(window_);
+    Render();
+    return true;
+}
+
 bool ReadoutWindow::RegisterWindowClass() const {
     WNDCLASSEXW windowClass{};
     windowClass.cbSize = sizeof(windowClass);
@@ -342,6 +378,16 @@ void ReadoutWindow::Render() {
                 brush.Get(),
                 D2D1_DRAW_TEXT_OPTIONS_CLIP);
         }
+        if (repositioning_) {
+            renderTarget_->DrawRectangle(
+                D2D1::RectF(
+                    0.5F,
+                    0.5F,
+                    PixelsToDips(surfaceWidth_, dpi_) - 0.5F,
+                    PixelsToDips(surfaceHeight_, dpi_) - 0.5F),
+                brush.Get(),
+                1.0F);
+        }
     }
 
     result = renderTarget_->EndDraw();
@@ -352,6 +398,116 @@ void ReadoutWindow::Render() {
         return;
     }
     ShowRenderedSurface();
+}
+
+void ReadoutWindow::MoveDuringReposition() noexcept {
+    if (!repositioning_ || !dragging_ || !lastTaskbar_.has_value()) {
+        return;
+    }
+    POINT cursor{};
+    if (::GetCursorPos(&cursor) == FALSE) {
+        return;
+    }
+
+    const long deltaX = cursor.x - dragOriginCursor_.x;
+    const long deltaY = cursor.y - dragOriginCursor_.y;
+    const auto& taskbar = *lastTaskbar_;
+    if (taskbar.IsHorizontal()) {
+        const long width = Width(dragOriginBounds_);
+        const long left = std::clamp(
+            dragOriginBounds_.left + deltaX,
+            taskbar.bounds.left,
+            taskbar.bounds.right - width);
+        windowBounds_.left = left;
+        windowBounds_.right = left + width;
+    } else {
+        const long height = Height(dragOriginBounds_);
+        const long top = std::clamp(
+            dragOriginBounds_.top + deltaY,
+            taskbar.bounds.top,
+            taskbar.bounds.bottom - height);
+        windowBounds_.top = top;
+        windowBounds_.bottom = top + height;
+    }
+    ShowRenderedSurface();
+}
+
+void ReadoutWindow::NudgeReposition(const long delta) noexcept {
+    if (!repositioning_ || !lastTaskbar_.has_value()) {
+        return;
+    }
+    const auto& taskbar = *lastTaskbar_;
+    if (taskbar.IsHorizontal()) {
+        const long width = Width(windowBounds_);
+        const long left = std::clamp(
+            windowBounds_.left + delta,
+            taskbar.bounds.left,
+            taskbar.bounds.right - width);
+        windowBounds_.left = left;
+        windowBounds_.right = left + width;
+    } else {
+        const long height = Height(windowBounds_);
+        const long top = std::clamp(
+            windowBounds_.top + delta,
+            taskbar.bounds.top,
+            taskbar.bounds.bottom - height);
+        windowBounds_.top = top;
+        windowBounds_.bottom = top + height;
+    }
+    ShowRenderedSurface();
+}
+
+void ReadoutWindow::FinishReposition(const bool save) {
+    if (!repositioning_) {
+        return;
+    }
+    if (dragging_) {
+        ::ReleaseCapture();
+        dragging_ = false;
+    }
+
+    std::optional<double> normalizedOffset;
+    if (save && lastTaskbar_.has_value()) {
+        const auto& taskbar = *lastTaskbar_;
+        if (taskbar.IsHorizontal()) {
+            const long available =
+                Width(taskbar.bounds) - Width(windowBounds_);
+            normalizedOffset = available > 0
+                ? static_cast<double>(windowBounds_.left - taskbar.bounds.left) /
+                    static_cast<double>(available)
+                : 0.0;
+        } else {
+            const long available =
+                Height(taskbar.bounds) - Height(windowBounds_);
+            normalizedOffset = available > 0
+                ? static_cast<double>(windowBounds_.top - taskbar.bounds.top) /
+                    static_cast<double>(available)
+                : 0.0;
+        }
+    } else {
+        windowBounds_ = originalBounds_;
+        adjacent_ = originalAdjacent_;
+    }
+
+    repositioning_ = false;
+    LONG_PTR extendedStyle = ::GetWindowLongPtrW(window_, GWL_EXSTYLE);
+    extendedStyle |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
+    ::SetWindowLongPtrW(window_, GWL_EXSTYLE, extendedStyle);
+    ::SetWindowPos(
+        window_,
+        HWND_TOPMOST,
+        0,
+        0,
+        0,
+        0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+    Render();
+
+    auto completion = std::move(repositionCompletion_);
+    repositionCompletion_ = {};
+    if (completion) {
+        completion(normalizedOffset);
+    }
 }
 
 void ReadoutWindow::ShowRenderedSurface() {
@@ -439,7 +595,64 @@ LRESULT CALLBACK ReadoutWindow::WindowProcedure(
 
     switch (message) {
         case WM_NCHITTEST:
-            return HTTRANSPARENT;
+            return readout != nullptr && readout->repositioning_
+                ? HTCLIENT
+                : HTTRANSPARENT;
+        case WM_SETCURSOR:
+            if (readout != nullptr && readout->repositioning_) {
+                ::SetCursor(::LoadCursorW(nullptr, IDC_SIZEALL));
+                return TRUE;
+            }
+            break;
+        case WM_LBUTTONDOWN:
+            if (readout != nullptr && readout->repositioning_) {
+                readout->dragging_ = true;
+                ::GetCursorPos(&readout->dragOriginCursor_);
+                readout->dragOriginBounds_ = readout->windowBounds_;
+                ::SetCapture(window);
+                return 0;
+            }
+            break;
+        case WM_MOUSEMOVE:
+            if (readout != nullptr) {
+                readout->MoveDuringReposition();
+            }
+            return 0;
+        case WM_LBUTTONUP:
+            if (readout != nullptr && readout->repositioning_) {
+                readout->FinishReposition(true);
+                return 0;
+            }
+            break;
+        case WM_RBUTTONDOWN:
+            if (readout != nullptr && readout->repositioning_) {
+                readout->FinishReposition(false);
+                return 0;
+            }
+            break;
+        case WM_KEYDOWN:
+            if (readout != nullptr && readout->repositioning_) {
+                if (wParam == VK_ESCAPE) {
+                    readout->FinishReposition(false);
+                    return 0;
+                }
+                if (wParam == VK_RETURN || wParam == VK_SPACE) {
+                    readout->FinishReposition(true);
+                    return 0;
+                }
+                const long step = (::GetKeyState(VK_SHIFT) & 0x8000) != 0
+                    ? 10L
+                    : 1L;
+                if (wParam == VK_LEFT || wParam == VK_UP) {
+                    readout->NudgeReposition(-step);
+                    return 0;
+                }
+                if (wParam == VK_RIGHT || wParam == VK_DOWN) {
+                    readout->NudgeReposition(step);
+                    return 0;
+                }
+            }
+            break;
         case WM_ERASEBKGND:
             return 1;
         case WM_DISPLAYCHANGE:
@@ -454,6 +667,7 @@ LRESULT CALLBACK ReadoutWindow::WindowProcedure(
         default:
             return ::DefWindowProcW(window, message, wParam, lParam);
     }
+    return ::DefWindowProcW(window, message, wParam, lParam);
 }
 
 }  // namespace netstat::windows

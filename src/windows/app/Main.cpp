@@ -2,6 +2,7 @@
 #include "app/SingleInstance.h"
 
 #include <Windows.h>
+#include <CommCtrl.h>
 #include <objbase.h>
 
 int WINAPI wWinMain(
@@ -19,6 +20,11 @@ int WINAPI wWinMain(
     const HRESULT comResult =
         ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     const bool uninitializeCom = SUCCEEDED(comResult);
+
+    INITCOMMONCONTROLSEX controls{};
+    controls.dwSize = sizeof(controls);
+    controls.dwICC = ICC_STANDARD_CLASSES | ICC_BAR_CLASSES;
+    ::InitCommonControlsEx(&controls);
 
     netstat::windows::App app(instance);
     const int exitCode = app.Run(showCommand);

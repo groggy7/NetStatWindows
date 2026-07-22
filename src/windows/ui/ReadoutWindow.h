@@ -11,6 +11,7 @@
 #include <wrl/client.h>
 
 #include <optional>
+#include <functional>
 
 namespace netstat::windows {
 
@@ -27,6 +28,8 @@ public:
     void Update(const NetworkRate& rate, const Settings& settings);
     void RefreshPlacement(bool force);
     void Hide() noexcept;
+    [[nodiscard]] bool BeginReposition(
+        std::function<void(std::optional<double>)> completion);
 
 private:
     [[nodiscard]] bool RegisterWindowClass() const;
@@ -35,6 +38,9 @@ private:
     void DestroySurface() noexcept;
     void Render();
     void ShowRenderedSurface();
+    void MoveDuringReposition() noexcept;
+    void NudgeReposition(long delta) noexcept;
+    void FinishReposition(bool save);
     [[nodiscard]] bool PlacementNeedsUpdate(
         const TaskbarInfo& taskbar,
         UINT dpi) const noexcept;
@@ -61,6 +67,13 @@ private:
     bool verticalTaskbar_{};
     bool twoRowsFit_{true};
     bool shouldShow_{};
+    bool repositioning_{};
+    bool dragging_{};
+    bool originalAdjacent_{};
+    POINT dragOriginCursor_{};
+    RECT dragOriginBounds_{};
+    RECT originalBounds_{};
+    std::function<void(std::optional<double>)> repositionCompletion_;
 
     Microsoft::WRL::ComPtr<ID2D1Factory> d2dFactory_;
     Microsoft::WRL::ComPtr<IDWriteFactory> writeFactory_;
