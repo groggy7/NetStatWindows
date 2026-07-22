@@ -9,6 +9,12 @@ project(
 
 option(NETSTAT_BUILD_TESTS "Build the portable unit tests" ON)
 
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY
+        "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    )
+endif()
+
 add_library(netstat_core STATIC
     src/core/InterfacePolicy.cpp
     src/core/RateCalculator.cpp
@@ -27,6 +33,7 @@ else()
 endif()
 
 if(WIN32)
+    enable_language(RC)
     add_subdirectory(src/windows)
 endif()
 

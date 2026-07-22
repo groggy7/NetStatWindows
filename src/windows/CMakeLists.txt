@@ -35,7 +35,7 @@ target_link_libraries(netstat_windows_platform
 )
 
 add_executable(NetStatBar WIN32
-    ${PROJECT_SOURCE_DIR}/app.manifest
+    ${PROJECT_SOURCE_DIR}/resources/NetStatBar.rc
     app/App.cpp
     app/Main.cpp
     app/SamplingWorker.cpp
@@ -47,6 +47,7 @@ add_executable(NetStatBar WIN32
 
 target_include_directories(NetStatBar PRIVATE
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/resources
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_compile_features(NetStatBar PRIVATE cxx_std_20)
@@ -86,3 +87,32 @@ set_target_properties(NetStatBar PROPERTIES
 if(MINGW)
     target_link_options(NetStatBar PRIVATE -municode)
 endif()
+
+add_executable(NetStatBarStartup WIN32 app/StartupMain.cpp)
+target_include_directories(NetStatBarStartup PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_compile_features(NetStatBarStartup PRIVATE cxx_std_20)
+target_compile_definitions(NetStatBarStartup PRIVATE
+    UNICODE
+    _UNICODE
+    _WIN32_WINNT=0x0A00
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+)
+if(MSVC)
+    target_compile_options(NetStatBarStartup PRIVATE
+        /W4 /WX /permissive- /EHsc /utf-8
+    )
+else()
+    target_compile_options(NetStatBarStartup PRIVATE
+        -Wall -Wextra -Wpedantic -Werror
+    )
+endif()
+target_link_libraries(NetStatBarStartup PRIVATE netstat_windows_platform)
+if(MINGW)
+    target_link_options(NetStatBarStartup PRIVATE -municode)
+endif()
+
+install(TARGETS NetStatBar NetStatBarStartup RUNTIME DESTINATION .)

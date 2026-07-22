@@ -1,6 +1,7 @@
 #include "ui/TrayIcon.h"
 
 #include "core/RateFormatter.h"
+#include "resource.h"
 
 #include <shellapi.h>
 #include <strsafe.h>
@@ -64,7 +65,16 @@ TrayIcon::~TrayIcon() {
 bool TrayIcon::Add(const HWND owner, const UINT callbackMessage) {
     owner_ = owner;
     callbackMessage_ = callbackMessage;
-    icon_ = ::LoadIconW(nullptr, IDI_APPLICATION);
+    icon_ = static_cast<HICON>(::LoadImageW(
+        ::GetModuleHandleW(nullptr),
+        MAKEINTRESOURCEW(IDI_NETSTATBAR),
+        IMAGE_ICON,
+        0,
+        0,
+        LR_DEFAULTSIZE | LR_SHARED));
+    if (icon_ == nullptr) {
+        icon_ = ::LoadIconW(nullptr, IDI_APPLICATION);
+    }
     return AddInternal();
 }
 

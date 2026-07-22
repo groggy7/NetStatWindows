@@ -1,0 +1,47 @@
+name: Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-package:
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake --preset windows-vs2022
+
+      - name: Build Debug
+        run: cmake --build --preset windows-debug --parallel
+
+      - name: Test Debug
+        run: ctest --preset windows-debug
+
+      - name: Build Release
+        run: cmake --build --preset windows-release --parallel
+
+      - name: Build unsigned MSIX
+        shell: pwsh
+        run: >-
+          ./scripts/build-msix.ps1
+          -Configuration Release
+          -SkipBuild
+
+      - name: Upload binaries and package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetStatBar-windows-x64
+          if-no-files-found: error
+          path: |
+            build/windows-vs2022/src/windows/Release/NetStatBar.exe
+            build/windows-vs2022/src/windows/Release/NetStatBarStartup.exe
+            out/*.msix

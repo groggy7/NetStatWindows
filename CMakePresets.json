@@ -36,6 +36,24 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    },
+    {
+      "name": "mingw-cross",
+      "displayName": "Cross-compile Windows x64",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/mingw-cross",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Windows",
+        "CMAKE_CXX_COMPILER": "x86_64-w64-mingw32-g++",
+        "CMAKE_RC_COMPILER": "x86_64-w64-mingw32-windres",
+        "CMAKE_BUILD_TYPE": "Release",
+        "NETSTAT_BUILD_TESTS": "ON"
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "buildPresets": [
@@ -52,6 +70,10 @@
       "name": "windows-release",
       "configurePreset": "windows-vs2022",
       "configuration": "Release"
+    },
+    {
+      "name": "mingw-cross",
+      "configurePreset": "mingw-cross"
     }
   ],
   "testPresets": [
