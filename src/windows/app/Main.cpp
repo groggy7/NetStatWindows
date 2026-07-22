@@ -37,7 +37,8 @@ int WINAPI wWinMain(
     HINSTANCE,
     PWSTR,
     const int showCommand) {
-    if (IsStartupLaunch() &&
+    const bool startupLaunch = IsStartupLaunch();
+    if (startupLaunch &&
         !netstat::windows::RegistrySettingsStore().Load().startAtSignIn) {
         return 0;
     }
@@ -67,7 +68,7 @@ int WINAPI wWinMain(
     ::InitCommonControlsEx(&controls);
 
     netstat::windows::App app(instance);
-    const int exitCode = app.Run(showCommand);
+    const int exitCode = app.Run(showCommand, !startupLaunch);
 
     if (uninitializeCom) {
         ::CoUninitialize();

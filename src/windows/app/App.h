@@ -23,7 +23,7 @@ public:
     App(const App&) = delete;
     App& operator=(const App&) = delete;
 
-    [[nodiscard]] int Run(int showCommand);
+    [[nodiscard]] int Run(int showCommand, bool openSettingsOnStart);
 
 private:
     [[nodiscard]] bool RegisterWindowClass() const;

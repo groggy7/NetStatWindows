@@ -1,10 +1,10 @@
 #include "ui/SettingsWindow.h"
 
 #include <CommCtrl.h>
+#include <strsafe.h>
 
 #include <algorithm>
 #include <cmath>
-#include <string>
 #include <utility>
 
 namespace netstat::windows {
@@ -522,12 +522,20 @@ void SettingsWindow::UpdateValueLabels() {
         ::SendMessageW(Control(AutoWidth), BM_GETCHECK, 0, 0) == BST_CHECKED;
     const auto width = ::SendMessageW(Control(WidthSlider), TBM_GETPOS, 0, 0);
     const auto font = ::SendMessageW(Control(FontSlider), TBM_GETPOS, 0, 0);
-    const std::wstring widthText = automaticWidth
-        ? L"Auto"
-        : std::to_wstring(width);
-    ::SetWindowTextW(Control(WidthValue), widthText.c_str());
-    const std::wstring fontText = std::to_wstring(font) + L" pt";
-    ::SetWindowTextW(Control(FontValue), fontText.c_str());
+    wchar_t widthText[32]{};
+    if (automaticWidth) {
+        static_cast<void>(
+            ::StringCchCopyW(widthText, ARRAYSIZE(widthText), L"Auto"));
+    } else {
+        static_cast<void>(::StringCchPrintfW(
+            widthText, ARRAYSIZE(widthText), L"%lld", width));
+    }
+    ::SetWindowTextW(Control(WidthValue), widthText);
+
+    wchar_t fontText[32]{};
+    static_cast<void>(::StringCchPrintfW(
+        fontText, ARRAYSIZE(fontText), L"%lld pt", font));
+    ::SetWindowTextW(Control(FontValue), fontText);
 }
 
 HWND SettingsWindow::CreateLabel(const wchar_t* text, const int id) const {

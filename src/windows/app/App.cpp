@@ -37,7 +37,7 @@ App::~App() {
     Shutdown();
 }
 
-int App::Run(const int showCommand) {
+int App::Run(const int showCommand, const bool openSettingsOnStart) {
     static_cast<void>(showCommand);
     if (!RegisterWindowClass() || !CreateControllerWindow()) {
         ::MessageBoxW(
@@ -56,6 +56,9 @@ int App::Run(const int showCommand) {
             MB_OK | MB_ICONERROR);
         Shutdown();
         return 1;
+    }
+    if (openSettingsOnStart) {
+        ShowSettings();
     }
 
     MSG message{};
