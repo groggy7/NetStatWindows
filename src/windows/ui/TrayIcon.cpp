@@ -139,7 +139,8 @@ void TrayIcon::UpdateTooltip(const std::wstring& tooltip) {
 std::optional<TrayCommand> TrayIcon::ShowContextMenu(
     const Settings& settings,
     const NetworkRate& rate,
-    const bool paused) const {
+    const bool paused,
+    POINT anchor) const {
     const MenuPointer menu(::CreatePopupMenu());
     if (!menu) {
         return std::nullopt;
@@ -263,14 +264,15 @@ std::optional<TrayCommand> TrayIcon::ShowContextMenu(
     ::AppendMenuW(menu.get(), MF_SEPARATOR, 0, nullptr);
     AppendCommand(menu.get(), TrayCommand::Exit, L"Exit");
 
-    POINT point{};
-    ::GetCursorPos(&point);
+    if (anchor.x == -1 && anchor.y == -1) {
+        ::GetCursorPos(&anchor);
+    }
     ::SetForegroundWindow(owner_);
     const UINT selected = ::TrackPopupMenuEx(
         menu.get(),
         TPM_LEFTALIGN | TPM_BOTTOMALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
-        point.x,
-        point.y,
+        anchor.x,
+        anchor.y,
         owner_,
         nullptr);
     ::PostMessageW(owner_, WM_NULL, 0, 0);

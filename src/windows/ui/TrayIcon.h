@@ -52,7 +52,8 @@ public:
     [[nodiscard]] std::optional<TrayCommand> ShowContextMenu(
         const Settings& settings,
         const NetworkRate& rate,
-        bool paused) const;
+        bool paused,
+        POINT anchor) const;
 
 private:
     [[nodiscard]] bool AddInternal();

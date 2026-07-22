@@ -4,6 +4,7 @@
 #include "core/RateFormatter.h"
 
 #include <shellapi.h>
+#include <windowsx.h>
 #include <wtsapi32.h>
 
 #include <string>
@@ -38,7 +39,21 @@ App::~App() {
 
 int App::Run(const int showCommand) {
     static_cast<void>(showCommand);
-    if (!RegisterWindowClass() || !CreateControllerWindow() || !Initialize()) {
+    if (!RegisterWindowClass() || !CreateControllerWindow()) {
+        ::MessageBoxW(
+            nullptr,
+            L"NetStatBar could not create its application window.",
+            L"NetStatBar startup failed",
+            MB_OK | MB_ICONERROR);
+        Shutdown();
+        return 1;
+    }
+    if (!Initialize()) {
+        ::MessageBoxW(
+            nullptr,
+            L"NetStatBar could not add its notification icon.",
+            L"NetStatBar startup failed",
+            MB_OK | MB_ICONERROR);
         Shutdown();
         return 1;
     }
@@ -105,7 +120,6 @@ bool App::Initialize() {
     }
     samplingWorker_.Start(
         settings_.interfaceMode, settings_.updateIntervalSeconds);
-    initialized_ = true;
     return true;
 }
 
@@ -117,7 +131,6 @@ void App::Shutdown() noexcept {
         ::WTSUnRegisterSessionNotification(window_);
     }
     trayIcon_.Remove();
-    initialized_ = false;
 }
 
 void App::PublishRate(const NetworkRate rate) {
@@ -153,11 +166,14 @@ void App::UpdateTooltip() {
 }
 
 void App::HandleTrayCallback(const WPARAM wParam, const LPARAM lParam) {
-    static_cast<void>(wParam);
     const UINT event = LOWORD(lParam);
     if (event == WM_CONTEXTMENU) {
+        const POINT anchor{
+            GET_X_LPARAM(wParam),
+            GET_Y_LPARAM(wParam)};
         const auto command =
-            trayIcon_.ShowContextMenu(settings_, displayedRate_, paused_);
+            trayIcon_.ShowContextMenu(
+                settings_, displayedRate_, paused_, anchor);
         if (command.has_value()) {
             HandleCommand(*command);
         }

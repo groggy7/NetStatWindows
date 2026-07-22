@@ -32,7 +32,7 @@ The unpackaged build may also create this opt-in startup value:
 HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run\NetStatBar
 ```
 
-Disabling **Start at sign-in** removes that unpackaged startup value. Resetting settings removes the app settings key before writing validated defaults again. An MSIX uninstall removes package-managed files; per-user registry settings outside package-managed storage may need to be removed manually if Windows does not virtualize them for the package.
+Disabling **Start at sign-in** removes that unpackaged startup value. Resetting settings replaces the stored values with validated defaults. An MSIX uninstall removes package-managed files; per-user registry settings outside package-managed storage may need to be removed manually if Windows does not virtualize them for the package.
 
 ## Interface totals
 

@@ -72,7 +72,7 @@ void SettingsWindow::Show(
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         470,
-        570,
+        600,
         owner,
         nullptr,
         instance_,
@@ -89,7 +89,7 @@ void SettingsWindow::Show(
         0,
         0,
         Scale(470, dpi),
-        Scale(570, dpi),
+        Scale(600, dpi),
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     RecreateFont(dpi);
     LayoutControls(dpi);

@@ -1,5 +1,6 @@
 #include "platform/MonotonicClock.h"
 #include "platform/RegistrySettingsStore.h"
+#include "platform/TaskbarGapFinder.h"
 #include "platform/WindowsNetworkSnapshotProvider.h"
 
 #include <Windows.h>
@@ -72,11 +73,42 @@ void TestRegistryRoundTrip() {
     Expect(store.Reset(), "test registry key is removed");
 }
 
+void TestTaskbarPlacementMath() {
+    netstat::windows::TaskbarInfo bottom;
+    bottom.bounds = {0, 1040, 1920, 1080};
+    bottom.edge = netstat::windows::TaskbarEdge::Bottom;
+    const RECT centered = netstat::windows::TaskbarGapFinder::PlaceAtOffset(
+        bottom, 100, 36, 0.5);
+    Expect(centered.left == 910, "horizontal placement centers by offset");
+    Expect(centered.top == 1042, "horizontal placement centers in taskbar");
+
+    const RECT adjacent = netstat::windows::TaskbarGapFinder::PlaceAdjacent(
+        bottom, 100, 36, 0.5);
+    Expect(adjacent.top == 1004, "bottom adjacent placement is above taskbar");
+    Expect(adjacent.bottom == 1040, "bottom adjacent placement meets taskbar");
+
+    netstat::windows::TaskbarInfo right;
+    right.bounds = {1880, 0, 1920, 1080};
+    right.edge = netstat::windows::TaskbarEdge::Right;
+    const RECT vertical = netstat::windows::TaskbarGapFinder::PlaceAtOffset(
+        right, 36, 80, 1.0);
+    Expect(vertical.left == 1882, "vertical placement centers in taskbar");
+    Expect(vertical.top == 1000, "vertical placement honors end offset");
+
+    const RECT verticalAdjacent =
+        netstat::windows::TaskbarGapFinder::PlaceAdjacent(
+            right, 36, 80, 1.0);
+    Expect(
+        verticalAdjacent.right == 1880,
+        "right adjacent placement ends at taskbar");
+}
+
 }  // namespace
 
 int main() {
     TestClockAndSnapshot();
     TestRegistryRoundTrip();
+    TestTaskbarPlacementMath();
     if (failures != 0) {
         return EXIT_FAILURE;
     }

@@ -24,6 +24,7 @@ struct Interval {
         case UIA_CheckBoxControlTypeId:
         case UIA_ComboBoxControlTypeId:
         case UIA_EditControlTypeId:
+        case UIA_GroupControlTypeId:
         case UIA_HyperlinkControlTypeId:
         case UIA_ListItemControlTypeId:
         case UIA_MenuItemControlTypeId:
@@ -31,6 +32,7 @@ struct Interval {
         case UIA_SplitButtonControlTypeId:
         case UIA_TabItemControlTypeId:
         case UIA_TextControlTypeId:
+        case UIA_ToolBarControlTypeId:
             return true;
         default:
             return false;
@@ -75,7 +77,15 @@ std::optional<RECT> TaskbarGapFinder::FindSafeGap(
     }
 
     ComPtr<IUIAutomationElement> root;
-    if (FAILED(automation->GetRootElement(&root))) {
+    HRESULT rootResult = E_FAIL;
+    if (taskbar.shellWindow != nullptr) {
+        rootResult = automation->ElementFromHandle(
+            taskbar.shellWindow, &root);
+    }
+    if (FAILED(rootResult)) {
+        rootResult = automation->GetRootElement(&root);
+    }
+    if (FAILED(rootResult)) {
         return std::nullopt;
     }
 
@@ -114,6 +124,19 @@ std::optional<RECT> TaskbarGapFinder::FindSafeGap(
             continue;
         }
 
+        const long taskbarAxisLength = taskbar.IsHorizontal()
+            ? taskbar.bounds.right - taskbar.bounds.left
+            : taskbar.bounds.bottom - taskbar.bounds.top;
+        const long itemAxisLength = taskbar.IsHorizontal()
+            ? bounds.right - bounds.left
+            : bounds.bottom - bounds.top;
+        const bool isContainer =
+            controlType == UIA_GroupControlTypeId ||
+            controlType == UIA_ToolBarControlTypeId;
+        if (isContainer && itemAxisLength * 10 >= taskbarAxisLength * 9) {
+            continue;
+        }
+
         if (taskbar.IsHorizontal()) {
             occupied.push_back({
                 bounds.left - margin,
@@ -123,6 +146,10 @@ std::optional<RECT> TaskbarGapFinder::FindSafeGap(
                 bounds.top - margin,
                 bounds.bottom + margin});
         }
+    }
+
+    if (occupied.empty()) {
+        return std::nullopt;
     }
 
     const long axisStart = taskbar.IsHorizontal()

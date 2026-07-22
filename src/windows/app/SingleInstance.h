@@ -13,6 +13,7 @@ public:
     SingleInstance& operator=(const SingleInstance&) = delete;
 
     [[nodiscard]] bool IsPrimary() const noexcept;
+    [[nodiscard]] bool IsValid() const noexcept;
     [[nodiscard]] static bool ActivateExisting() noexcept;
 
 private:

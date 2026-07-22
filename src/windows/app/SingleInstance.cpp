@@ -24,6 +24,10 @@ bool SingleInstance::IsPrimary() const noexcept {
     return isPrimary_;
 }
 
+bool SingleInstance::IsValid() const noexcept {
+    return mutex_ != nullptr;
+}
+
 bool SingleInstance::ActivateExisting() noexcept {
     const HWND existing = ::FindWindowExW(
         HWND_MESSAGE, nullptr, kControllerWindowClass, nullptr);

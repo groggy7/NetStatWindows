@@ -61,7 +61,6 @@ private:
     SettingsWindow settingsWindow_;
     SamplingWorker samplingWorker_;
     bool paused_{};
-    bool initialized_{};
     bool readoutAvailable_{};
 };
 

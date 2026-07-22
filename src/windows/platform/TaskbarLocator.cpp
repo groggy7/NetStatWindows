@@ -85,6 +85,12 @@ bool TaskbarLocator::IsFullscreenOrPresentation() noexcept {
 }
 
 UINT TaskbarLocator::DpiFor(const TaskbarInfo& taskbar) noexcept {
+    if (taskbar.shellWindow != nullptr) {
+        const UINT windowDpi = ::GetDpiForWindow(taskbar.shellWindow);
+        if (windowDpi != 0) {
+            return windowDpi;
+        }
+    }
     UINT dpiX = 96;
     UINT dpiY = 96;
     if (taskbar.monitor != nullptr &&
