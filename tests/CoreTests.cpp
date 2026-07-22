@@ -1,6 +1,7 @@
 #include "core/InterfacePolicy.h"
 #include "core/RateCalculator.h"
 #include "core/RateFormatter.h"
+#include "core/ReadoutText.h"
 #include "core/Settings.h"
 
 #include <cmath>
@@ -265,6 +266,47 @@ void TestInterfacePolicy() {
         "disconnected interface is excluded");
 }
 
+void TestReadoutText() {
+    auto settings = netstat::Settings::Defaults();
+    const netstat::NetworkRate rate{
+        .downBytesPerSecond = 12'400,
+        .upBytesPerSecond = 1'260'000};
+
+    auto lines = netstat::ReadoutText::Build(rate, settings, false, true);
+    Expect(lines.size() == 2, "stacked layout has two lines");
+    if (lines.size() == 2) {
+        ExpectEqual(lines[0], L"\u2193  12 KB/s", "download is the first row");
+        ExpectEqual(lines[1], L"\u2191 1.3 MB/s", "upload is the second row");
+    }
+
+    lines = netstat::ReadoutText::Build(rate, settings, true, true);
+    Expect(lines.size() == 2, "vertical taskbar retains two rows");
+    if (lines.size() == 2) {
+        ExpectEqual(lines[0], L"\u219312K", "vertical download is compact");
+        ExpectEqual(lines[1], L"\u21911.3M", "vertical upload is compact");
+    }
+
+    lines = netstat::ReadoutText::Build(rate, settings, false, false);
+    Expect(lines.size() == 1, "short taskbar falls back to one row");
+
+    settings.displayLayout = netstat::DisplayLayout::Labels;
+    lines = netstat::ReadoutText::Build(rate, settings, false, true);
+    Expect(lines.size() == 1, "labels layout remains a single row");
+    if (!lines.empty()) {
+        Expect(
+            lines[0].starts_with(L"D ") && lines[0].find(L"  U ") !=
+                std::wstring::npos,
+            "labels identify both directions");
+    }
+
+    settings.displayLayout = netstat::DisplayLayout::DownloadOnly;
+    lines = netstat::ReadoutText::Build(rate, settings, false, true);
+    Expect(lines.size() == 1, "download-only has one row");
+    if (!lines.empty()) {
+        Expect(lines[0].starts_with(L"\u2193"), "download-only uses down arrow");
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -272,6 +314,7 @@ int main() {
     TestRateFormatter();
     TestSettingsValidation();
     TestInterfacePolicy();
+    TestReadoutText();
 
     if (failures != 0) {
         std::cerr << failures << " test(s) failed\n";

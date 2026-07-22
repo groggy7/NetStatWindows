@@ -2,9 +2,10 @@
 
 #include "core/InterfacePolicy.h"
 
+#include <WinSock2.h>
 #include <Windows.h>
-#include <iphlpapi.h>
 #include <netioapi.h>
+#include <iphlpapi.h>
 
 #include <memory>
 

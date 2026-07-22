@@ -28,6 +28,7 @@ namespace {
 
 App::App(const HINSTANCE instance)
     : instance_(instance),
+      readoutWindow_(instance),
       samplingWorker_([this](const NetworkRate rate) { PublishRate(rate); }) {}
 
 App::~App() {
@@ -88,8 +89,12 @@ bool App::Initialize() {
     if (!trayIcon_.Add(window_, kTrayCallbackMessage)) {
         return false;
     }
+    readoutAvailable_ = readoutWindow_.Create();
     ::WTSRegisterSessionNotification(window_, NOTIFY_FOR_THIS_SESSION);
     UpdateTooltip();
+    if (readoutAvailable_) {
+        readoutWindow_.Update(displayedRate_, settings_);
+    }
     samplingWorker_.Start(
         settings_.interfaceMode, settings_.updateIntervalSeconds);
     initialized_ = true;
@@ -98,6 +103,8 @@ bool App::Initialize() {
 
 void App::Shutdown() noexcept {
     samplingWorker_.Stop();
+    readoutWindow_.Destroy();
+    readoutAvailable_ = false;
     if (window_ != nullptr) {
         ::WTSUnRegisterSessionNotification(window_);
     }
@@ -121,6 +128,9 @@ void App::ApplyLatestRate() {
         displayedRate_ = pendingRate_;
     }
     UpdateTooltip();
+    if (readoutAvailable_) {
+        readoutWindow_.Update(displayedRate_, settings_);
+    }
 }
 
 void App::UpdateTooltip() {
@@ -251,6 +261,9 @@ void App::SaveAndRefresh(const bool reconfigureSampler) {
             settings_.interfaceMode, settings_.updateIntervalSeconds);
     }
     UpdateTooltip();
+    if (readoutAvailable_) {
+        readoutWindow_.Update(displayedRate_, settings_);
+    }
 }
 
 void App::ShowSettings() {
@@ -289,6 +302,10 @@ LRESULT App::HandleMessage(
     const LPARAM lParam) {
     if (message == taskbarCreatedMessage_ && taskbarCreatedMessage_ != 0) {
         static_cast<void>(trayIcon_.ReAdd());
+        if (readoutAvailable_) {
+            readoutWindow_.RefreshPlacement(true);
+            readoutWindow_.Update(displayedRate_, settings_);
+        }
         return 0;
     }
 
@@ -310,8 +327,25 @@ LRESULT App::HandleMessage(
             }
             return TRUE;
         case WM_WTSSESSION_CHANGE:
-            if (wParam == WTS_SESSION_UNLOCK && !paused_) {
-                samplingWorker_.ResetBaseline();
+            if (wParam == WTS_SESSION_LOCK) {
+                readoutWindow_.Hide();
+            } else if (wParam == WTS_SESSION_UNLOCK) {
+                if (!paused_) {
+                    samplingWorker_.ResetBaseline();
+                }
+                if (readoutAvailable_) {
+                    readoutWindow_.RefreshPlacement(true);
+                    readoutWindow_.Update(displayedRate_, settings_);
+                }
+            }
+            return 0;
+        case WM_DISPLAYCHANGE:
+        case WM_DPICHANGED:
+        case WM_SETTINGCHANGE:
+        case WM_THEMECHANGED:
+            if (readoutAvailable_) {
+                readoutWindow_.RefreshPlacement(true);
+                readoutWindow_.Update(displayedRate_, settings_);
             }
             return 0;
         case WM_CLOSE:

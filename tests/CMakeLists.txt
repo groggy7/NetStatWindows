@@ -16,9 +16,15 @@ if(WIN32)
         netstat_windows_platform_tests PRIVATE netstat_windows_platform
     )
     target_compile_features(netstat_windows_platform_tests PRIVATE cxx_std_20)
-    target_compile_options(netstat_windows_platform_tests PRIVATE
-        /W4 /WX /permissive- /EHsc /utf-8
-    )
+    if(MSVC)
+        target_compile_options(netstat_windows_platform_tests PRIVATE
+            /W4 /WX /permissive- /EHsc /utf-8
+        )
+    else()
+        target_compile_options(netstat_windows_platform_tests PRIVATE
+            -Wall -Wextra -Wpedantic -Werror
+        )
+    endif()
     add_test(
         NAME netstat_windows_platform_tests
         COMMAND netstat_windows_platform_tests

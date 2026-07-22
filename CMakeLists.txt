@@ -13,6 +13,7 @@ add_library(netstat_core STATIC
     src/core/InterfacePolicy.cpp
     src/core/RateCalculator.cpp
     src/core/RateFormatter.cpp
+    src/core/ReadoutText.cpp
     src/core/Settings.cpp
 )
 

@@ -4,6 +4,7 @@
 #include "core/NetworkRate.h"
 #include "core/Settings.h"
 #include "platform/RegistrySettingsStore.h"
+#include "ui/ReadoutWindow.h"
 #include "ui/TrayIcon.h"
 
 #include <Windows.h>
@@ -51,9 +52,11 @@ private:
     NetworkRate pendingRate_;
     std::mutex rateMutex_;
     TrayIcon trayIcon_;
+    ReadoutWindow readoutWindow_;
     SamplingWorker samplingWorker_;
     bool paused_{};
     bool initialized_{};
+    bool readoutAvailable_{};
 };
 
 }  // namespace netstat::windows
