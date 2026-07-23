@@ -62,6 +62,7 @@ if(MSVC)
     target_compile_options(NetStatBar PRIVATE
         /W4 /WX /permissive- /EHsc /utf-8
     )
+    target_link_options(NetStatBar PRIVATE /MANIFEST:NO)
 else()
     target_compile_options(NetStatBar PRIVATE
         -Wall -Wextra -Wpedantic -Werror
