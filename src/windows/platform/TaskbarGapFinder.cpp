@@ -1,5 +1,6 @@
 #include "platform/TaskbarGapFinder.h"
 
+#include <objbase.h>
 #include <UIAutomation.h>
 #include <wrl/client.h>
 
