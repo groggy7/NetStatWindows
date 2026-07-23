@@ -28,11 +28,18 @@ jobs:
           $buildOutput | ForEach-Object { Write-Host $_ }
 
           if ($exitCode -ne 0) {
-            $buildOutput |
+            $diagnostics = @($buildOutput |
               Where-Object {
-                "$_" -match "(fatal )?error C\d{4}|error LNK\d{4}"
+                "$_" -match "(?i)\berror\b|\bfatal\b|\bfailed\b|MSB\d{4}"
               } |
-              ForEach-Object { Write-Output "::error::$($_)" }
+              Select-Object -Last 20)
+            if ($diagnostics.Count -eq 0) {
+              $diagnostics = @($buildOutput | Select-Object -Last 20)
+            }
+            $diagnostics | ForEach-Object {
+              $message = "$_".Replace("%", "%25")
+              Write-Host "::error::$message"
+            }
             exit $exitCode
           }
 
