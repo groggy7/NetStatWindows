@@ -21,7 +21,20 @@ jobs:
         run: cmake --preset windows-vs2022
 
       - name: Build Debug
-        run: cmake --build --preset windows-debug --parallel
+        shell: pwsh
+        run: |
+          $buildOutput = & cmake --build --preset windows-debug --parallel 2>&1
+          $exitCode = $LASTEXITCODE
+          $buildOutput | ForEach-Object { Write-Host $_ }
+
+          if ($exitCode -ne 0) {
+            $buildOutput |
+              Where-Object {
+                "$_" -match "(fatal )?error C\d{4}|error LNK\d{4}"
+              } |
+              ForEach-Object { Write-Output "::error::$($_)" }
+            exit $exitCode
+          }
 
       - name: Test Debug
         run: ctest --preset windows-debug
