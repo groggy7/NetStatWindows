@@ -549,7 +549,9 @@ HWND SettingsWindow::CreateLabel(const wchar_t* text, const int id) const {
         0,
         0,
         window_,
-        id == 0 ? nullptr : reinterpret_cast<HMENU>(id),
+        id == 0
+            ? nullptr
+            : reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
         instance_,
         nullptr);
 }
@@ -566,7 +568,7 @@ HWND SettingsWindow::CreateCombo(const int id) const {
         0,
         0,
         window_,
-        reinterpret_cast<HMENU>(id),
+        reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
         instance_,
         nullptr);
 }
