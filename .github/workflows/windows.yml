@@ -51,10 +51,14 @@ jobs:
 
       - name: Build unsigned MSIX
         shell: pwsh
-        run: >-
-          ./scripts/build-msix.ps1
-          -Configuration Release
-          -SkipBuild
+        run: |
+          try {
+            ./scripts/build-msix.ps1 -Configuration Release -SkipBuild
+          } catch {
+            $message = "$($_.Exception.Message)".Replace("%", "%25")
+            Write-Host "::error::$message"
+            throw
+          }
 
       - name: Upload binaries and package
         uses: actions/upload-artifact@v4

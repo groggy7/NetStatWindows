@@ -65,8 +65,13 @@ if (Test-Path $PackagePath) {
     Remove-Item -Force $PackagePath
 }
 $MakeAppx = Find-WindowsSdkTool "makeappx.exe"
-& $MakeAppx pack /d $StageDirectory /p $PackagePath /o
-if ($LASTEXITCODE -ne 0) { throw "MakeAppx failed." }
+$MakeAppxOutput = & $MakeAppx pack /d $StageDirectory /p $PackagePath /o 2>&1
+$MakeAppxExitCode = $LASTEXITCODE
+$MakeAppxOutput | ForEach-Object { Write-Host $_ }
+if ($MakeAppxExitCode -ne 0) {
+    $Details = ($MakeAppxOutput | Select-Object -Last 10) -join " | "
+    throw "MakeAppx failed with exit code ${MakeAppxExitCode}: $Details"
+}
 
 if ($CertificatePath) {
     $SignTool = Find-WindowsSdkTool "signtool.exe"
