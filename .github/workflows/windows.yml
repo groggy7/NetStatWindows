@@ -55,7 +55,10 @@ jobs:
           try {
             ./scripts/build-msix.ps1 -Configuration Release -SkipBuild
           } catch {
-            $message = "$($_.Exception.Message)".Replace("%", "%25")
+            $message = "$($_.Exception.Message)"
+            $message = $message.Replace("%", "%25")
+            $message = $message.Replace("`r", "%0D")
+            $message = $message.Replace("`n", "%0A")
             Write-Host "::error::$message"
             throw
           }

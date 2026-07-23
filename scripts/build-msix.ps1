@@ -55,10 +55,12 @@ Copy-Item (Join-Path $BinaryDirectory "NetStatBarStartup.exe") $StageDirectory
 Copy-Item (Join-Path $ProjectRoot "packaging/assets/*") (Join-Path $StageDirectory "Assets")
 
 $Manifest = Get-Content (Join-Path $ProjectRoot "packaging/AppxManifest.xml") -Raw
-$Manifest = $Manifest.Replace('Version="0.1.0.0"', "Version=`"$Version`")
+$Manifest = $Manifest.Replace(
+    'Version="0.1.0.0"',
+    ('Version="{0}"' -f $Version))
 $Manifest = $Manifest.Replace(
     'Publisher="CN=NetStatBar Development"',
-    "Publisher=`"$Publisher`")
+    ('Publisher="{0}"' -f $Publisher))
 Set-Content -Path (Join-Path $StageDirectory "AppxManifest.xml") -Value $Manifest -Encoding utf8
 
 if (Test-Path $PackagePath) {
