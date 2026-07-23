@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure
         run: cmake --preset windows-vs2022
@@ -64,7 +64,7 @@ jobs:
           }
 
       - name: Upload binaries and package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NetStatBar-windows-x64
           if-no-files-found: error
